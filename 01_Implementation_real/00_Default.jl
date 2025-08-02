@@ -254,6 +254,20 @@ ESM = Model(Gurobi.Optimizer)
     SalvageValue[y,r,t] == (NewCapacity[y,r,t]*InvestmentCost[y,t])/(1+DiscountRate)^(y - minimum(year)) * (1-((maximum(year)+1-y)/TechnologyLifetime[t]))
 )
 
+################################################################
+#new constraints for term paper
+# Additionality
+
+@constraint(ESM, AdditionalityNationalCumulative[y in year],
+    sum(FuelUseByTechnology[y, r, h, "X_Alkaline_Electrolysis", "Power"] for r in regions, h in hour) <=
+        sum(OutputRatio[t, "Power"] *
+            NewCapacity[yy, r, t] *
+            sum(CapacityFactor[r, h, t] for h in hour)
+            for t in technologies if TagRenewable[t] > 0 && TagDispatchableTechnology[t] == 0
+            for yy in year if yy >= y
+            for r in regions
+        )
+)
 
 # the objective function
 # total costs should be minimized
