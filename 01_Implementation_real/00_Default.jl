@@ -179,7 +179,6 @@ ESM = Model(Gurobi.Optimizer)
 
 # installed capacity is limited by the maximum capacity
 
-
 @constraint(ESM, MaxCapacityFunction[y in year,r in regions,t in technologies],
      AccumulatedCapacity[y,r,t] <= MaxCapacity[y,r,t]
 )
