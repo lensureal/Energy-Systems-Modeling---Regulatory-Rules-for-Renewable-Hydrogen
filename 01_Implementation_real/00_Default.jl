@@ -70,6 +70,9 @@ RegionalAnnualEmissionLimit = readin("regionalannualemissionlimit.csv",default=9
 #our discount rate
 DiscountRate = 0.05
 
+# Penalty for unmet demand, now region-dependent
+UnmetDemandPenalty = readin("unmetdemandpenalty.csv", dims=1, dir=data_dir)
+
 # stuff for emission trajectories
 ModelPeriodEmissionLimit = 25500000
 
@@ -129,6 +132,7 @@ ESM = Model(Gurobi.Optimizer)
 
 ## constraints ##
 # Generation must meet demand
+
 @constraint(ESM, EnergyBalance[y in year,r in regions,h in hour,f in fuels],
     (sum(FuelProductionByTechnology[y,r,h,t,f] for t in technologies if OutputRatio[t,f]>0) 
     + sum(StorageDischarge[y,r,s,h,f] for s in storages if StorageDischargeEfficiency[s,f]>0) 
@@ -259,8 +263,9 @@ ESM = Model(Gurobi.Optimizer)
     + sum(TradeCostFactor[f]*TradeDistance[r,rr] * Export[y,rr,r,h,f]  * YearlyDifferenceMultiplier[y] / (1+DiscountRate)^(y - minimum(year)) for h in hour, r in regions, rr in regions, f in fuels, y in year if MaxTradeCapacity[y,r,rr,f]>0)
     - sum(SalvageValue[y,r,t] for y in year, r in regions, t in technologies)
     # now, UnmetDemand should also be punished properly so that the model does not try to use it for no reason
-    + sum(UnmetDemand[y,r,h,f] for y in year, r in regions, h in hour, f in fuels)*9999
+    + sum(UnmetDemand[y,r,h,f] * UnmetDemandPenalty[r] for y in year, r in regions, h in hour, f in fuels)
     )
+
 
 # this starts the optimization
 # the assigned solver (here Gurobi) will takes care of the solution algorithm
