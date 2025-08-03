@@ -269,6 +269,24 @@ ESM = Model(Gurobi.Optimizer)
         )
 )
 
+# Temporal Correlation Constraint (Hourly)
+# For each hour, electricity consumption for electrolysis must be matched by simultaneous renewable generation in the same region.
+@constraint(ESM, TemporalCorrelationHourly[y in year, r in regions, h in hour],
+    FuelUseByTechnology[y, r, h, "X_Alkaline_Electrolysis", "Power"] <=
+        sum(FuelProductionByTechnology[y, r, h, t, "Power"] for t in technologies if TagRenewable[t] ==1)
+)
+
+# Geographical Correlation Constraint (Bidding Zone)
+# Links the annual electricity consumption of the electrolyzer in a region to the
+# potential generation from NEW renewable capacity built in the same region since the start of the modeling period.
+# This enforces that new hydrogen production is backed by new, local renewable assets.
+@constraint(ESM, GeographicalCorrelation[y in year, r in regions],
+    sum(FuelUseByTechnology[y, r, h, "X_Alkaline_Electrolysis", "Power"] for h in hour) * 8760 / n_hour <=
+    sum(NewCapacity[yy, r, t] * sum(CapacityFactor[r, h, t] for h in hour) * 8760 / n_hour
+        for t in technologies if TagRenewable[t] == 1
+        for yy in year if yy <= y
+    )
+)
 # the objective function
 # total costs should be minimized
 @objective(ESM, Min, 
